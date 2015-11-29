@@ -6,7 +6,6 @@ import java.io.OutputStreamWriter;
 import java.sql.SQLException;
 
 import twitter4j.JSONException;
-import twitter4j.JSONObject;
 import twitter4j.Query;
 import twitter4j.Query.ResultType;
 import twitter4j.QueryResult;
@@ -49,11 +48,8 @@ public class TwitterDataJSON {
 			result = twitter.search(query);
 					for (Status tweet : result.getTweets()) {
 						String json= TwitterObjectFactory.getRawJSON(tweet);
-						int i=10;
-						//System.out.println(json);
 						 new File("Tweets/"+query.getQuery()).mkdir();
 						 String fileName = "Tweets/" + query.getQuery()+"/"+tweet.getId()+ ".json";
-						 JSONObject jsonObject= new JSONObject(json);
 						 storeJSON(json, fileName);
 					}	
 		} while ((query = result.nextQuery()) != null);
