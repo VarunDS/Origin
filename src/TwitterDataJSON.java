@@ -4,6 +4,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.sql.SQLException;
+import java.util.List;
 
 import twitter4j.JSONException;
 import twitter4j.Query;
@@ -37,17 +38,18 @@ public class TwitterDataJSON {
 		builder.setJSONStoreEnabled(true);
 	}
 	
-	public void getTweets() throws TwitterException, IOException, JSONException{
+	public void getTweets(String searchQuery) throws TwitterException, IOException, JSONException{
 		twitter= new TwitterFactory(builder.build()).getInstance();
-		Query query = new Query("Bollywood");
-		
-		query.setSince("2015-11-27");
+		Query query = new Query(searchQuery);
 		query.setResultType(ResultType.popular);
 		QueryResult result;
+		new File("Tweets").mkdir();
 		do {
 			result = twitter.search(query);
-					for (Status tweet : result.getTweets()) {
+			List<Status> tweets=result.getTweets();
+					for (Status tweet :tweets) {
 						String json= TwitterObjectFactory.getRawJSON(tweet);
+						
 						 new File("Tweets/"+query.getQuery()).mkdir();
 						 String fileName = "Tweets/" + query.getQuery()+"/"+tweet.getId()+ ".json";
 						 storeJSON(json, fileName);
@@ -91,9 +93,10 @@ public class TwitterDataJSON {
 	public static void main(String args[]) throws TwitterException, IOException, JSONException, ClassNotFoundException, SQLException
 	{
 		TwitterDataJSON tweet= new TwitterDataJSON();
-		tweet.getTweets();
+		String searchQuery= new String("Tamasha");
+		tweet.getTweets(searchQuery);
 		DrillJDBCCon con = new DrillJDBCCon();
-		con.executeQuery("Select * FROM dfs.`/Users/varungupta/Documents/workspace/SentimentAnalysis/Tweets/Bollywood/`");
+		con.executeQuery("Select text FROM dfs.`/Users/varungupta/git/OriginNew/Tweets/"+searchQuery+"/`");
 	}
 
 
