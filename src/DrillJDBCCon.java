@@ -24,12 +24,10 @@ public class DrillJDBCCon {
 		return connection;
 		}
 	
-	public void executeQuery(String sql) throws ClassNotFoundException, SQLException{
+	public ResultSet executeQuery(String sql) throws ClassNotFoundException, SQLException{
 		st=getConnection().createStatement();
 		rs=st.executeQuery(sql);
-		while(rs.next()){
-			System.out.println(rs.getString("text")+"\n");
-			}
+		return rs;
 	}
 	
 }
