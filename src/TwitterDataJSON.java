@@ -1,13 +1,15 @@
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
-import oadd.org.apache.commons.codec.language.RefinedSoundex;
 import twitter4j.JSONException;
 import twitter4j.Query;
 import twitter4j.Query.ResultType;
@@ -33,8 +35,8 @@ public class TwitterDataJSON {
 		builder= new ConfigurationBuilder();
 		builder.setOAuthConsumerKey(CONSUMER_KEY);
 		builder.setOAuthConsumerSecret(CONSUMER_KEY_SECRET);
-		accessToken="4322430433-RiyQd99LzEfUl4RhgYU3X8hDK8VzKbSglWl8PxL";
-		accessTokenSecret="U9Xciy5jSU8gSYZI77l0O5TBYvKRTwNeptvrTIs4XOopc";		
+		accessToken="4322430433-4Yeu5vSZei7TMTeXYEJnyKP6AUVVQq3GP5Xj3fk";
+		accessTokenSecret="3BQEqbtHZ8e13Nwx71nI3yyvRWo3moF4VLiYdyr7ojzJv";		
 		builder.setOAuthAccessToken(accessToken);
 		builder.setOAuthAccessTokenSecret(accessTokenSecret);
 		builder.setDebugEnabled(true);
@@ -125,24 +127,55 @@ public class TwitterDataJSON {
 
 
 	}
-	public void refineTweets(String searchQuery,Long Id,String textToBeTagged) throws IOException{
-		MaxentTagger tagger= new MaxentTagger("/Users/varungupta/Downloads/stanford-postagger-2015-04-20/models/english-left3words-distsim.tagger");
-		String taggedText=tagger.tagString(textToBeTagged);
-		String refinedTweetFileName = "Tweets/" + searchQuery+"/"+Id+"Refined.txt";
-		storeRefinedTweet(taggedText,refinedTweetFileName);
+
+	private static String removeStopWords(String tweetRegex) throws IOException{
+		String [] words= tweetRegex.split(" ");
+		BufferedReader br= new BufferedReader(new FileReader("stopwords.txt"));
+		List<String> stopWordList= new ArrayList<String>();
+		List<String> tweetList= new ArrayList<String>();
+		String str=null;
+		String stopWordsRemoved="";
+		while((str=br.readLine())!=null)
+		{	
+			stopWordList.add(str);
+		
+		}
+		for(String word:words){
+			if(!stopWordList.contains(word))
+			{
+				tweetList.add(word);
+			}
+		}
+		for(String text:tweetList)
+		{
+			stopWordsRemoved+=" "+text;
+		}
+		br.close();
+		return stopWordsRemoved;
+
 	}
+
+		public static String posTagger(String textToBeTagged) throws IOException{
+			MaxentTagger tagger= new MaxentTagger("/Users/varungupta/Downloads/stanford-postagger-2015-04-20/models/english-left3words-distsim.tagger");
+			String taggedText=tagger.tagString(textToBeTagged);
+			return taggedText;
+			
+		}
 	public static void main(String args[]) throws TwitterException, IOException, JSONException, ClassNotFoundException, SQLException
 	{
 		TwitterDataJSON tweet= new TwitterDataJSON();
-		String searchQuery= new String("Tamasha");
+		String searchQuery= new String("Bajirao Mastani");
 		tweet.getTweets(searchQuery);
 		DrillJDBCCon con = new DrillJDBCCon();
 		ResultSet rs=con.executeQuery("Select id,text FROM dfs.`/Users/varungupta/git/OriginNew/Tweets/"+searchQuery+"/`");
 		while(rs.next()){
 			System.out.println(rs.getLong("id"));
 			Long Id=rs.getLong("id");
-			String textToBeTagged=rs.getString("text");
-			tweet.refineTweets(searchQuery,Id,textToBeTagged);
+			String tweetRegex=rs.getString("text").replaceAll("@[a-zA-Z1-9]+|#[a-zA-Z1-9]+|(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]+|(\n)", "");
+			String stopWordsRemoved=removeStopWords(tweetRegex);
+			String taggedText=posTagger(stopWordsRemoved);
+			String refinedTweetFileName = "Tweets/" + searchQuery+"/"+Id+"Refined.txt";
+			storeRefinedTweet(taggedText,refinedTweetFileName);
 		}
 
 	}
