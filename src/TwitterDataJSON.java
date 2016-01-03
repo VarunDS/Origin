@@ -138,7 +138,7 @@ public class TwitterDataJSON {
 		while((str=br.readLine())!=null)
 		{	
 			stopWordList.add(str);
-		
+
 		}
 		for(String word:words){
 			if(!stopWordList.contains(word))
@@ -155,12 +155,12 @@ public class TwitterDataJSON {
 
 	}
 
-		public static String posTagger(String textToBeTagged) throws IOException{
-			MaxentTagger tagger= new MaxentTagger("/Users/varungupta/Downloads/stanford-postagger-2015-04-20/models/english-left3words-distsim.tagger");
-			String taggedText=tagger.tagString(textToBeTagged);
-			return taggedText;
-			
-		}
+	public static String posTagger(String textToBeTagged) throws IOException{
+		MaxentTagger tagger= new MaxentTagger("/Users/varungupta/Downloads/stanford-postagger-2015-04-20/models/english-left3words-distsim.tagger");
+		String taggedText=tagger.tagString(textToBeTagged);
+		return taggedText;
+
+	}
 	public static void main(String args[]) throws TwitterException, IOException, JSONException, ClassNotFoundException, SQLException
 	{
 		TwitterDataJSON tweet= new TwitterDataJSON();
@@ -179,12 +179,4 @@ public class TwitterDataJSON {
 		}
 
 	}
-
-
-
-
-
-
-
-
 }
