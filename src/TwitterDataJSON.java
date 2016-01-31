@@ -10,6 +10,8 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.json.simple.parser.ParseException;
+
 import twitter4j.JSONException;
 import twitter4j.Query;
 import twitter4j.Query.ResultType;
@@ -23,28 +25,41 @@ import twitter4j.conf.ConfigurationBuilder;
 import edu.stanford.nlp.tagger.maxent.MaxentTagger;
 
 
-public class TwitterDataJSON {
-	private Twitter twitter;
-	private ConfigurationBuilder builder;
-	private static final String CONSUMER_KEY="lK2k609IQGtUQudAu6CIencxB";
-	private static final String CONSUMER_KEY_SECRET="ZFpvxvRywjFs6VHKoVCMr3H1dRePO7pkzgLrqeLYYP8P5p1xZT";
-	private String accessToken;
-	private String accessTokenSecret;
-
-	public TwitterDataJSON(){
-		builder= new ConfigurationBuilder();
-		builder.setOAuthConsumerKey(CONSUMER_KEY);
-		builder.setOAuthConsumerSecret(CONSUMER_KEY_SECRET);
-		accessToken="4322430433-4Yeu5vSZei7TMTeXYEJnyKP6AUVVQq3GP5Xj3fk";
-		accessTokenSecret="3BQEqbtHZ8e13Nwx71nI3yyvRWo3moF4VLiYdyr7ojzJv";		
-		builder.setOAuthAccessToken(accessToken);
-		builder.setOAuthAccessTokenSecret(accessTokenSecret);
-		builder.setDebugEnabled(true);
-		builder.setJSONStoreEnabled(true);
+public class TwitterDataJSON implements Runnable {
+	public void run(){
+		TwitterDataJSON tweet= new TwitterDataJSON();
+		TwitterCredentialsRunnable credentialsRunnable= new TwitterCredentialsRunnable();
+		try {
+			ConfigurationBuilder builder=credentialsRunnable.readJson(Integer.parseInt(Thread.currentThread().getName()));
+			String value=builder.toString();
+			System.out.println(value);
+			String searchQuery= new String("INDvsAUS");
+			getTweets(searchQuery, builder);
+			DrillJDBCCon con = new DrillJDBCCon();
+			tweet.tweetProcessing(con, searchQuery);
+		} catch (IOException e) {
+			System.out.println("IO Exception encountered");
+			e.printStackTrace();
+		} catch (ParseException e) {
+			System.out.println("Parse Exception encountered");
+			e.printStackTrace();
+		} catch (JSONException e) {
+			System.out.println("JSONException encountered");
+			e.printStackTrace();}
+		catch (TwitterException e) {
+			System.out.println("TwitterException encountered");
+			e.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			System.out.println("ClassNotFoundException encountered");
+			e.printStackTrace();
+		} catch (SQLException e) {
+			System.out.println("SQLException encountered");
+			e.printStackTrace();
+		}
 	}
 
-	public void getTweets(String searchQuery) throws TwitterException, IOException, JSONException{
-		twitter= new TwitterFactory(builder.build()).getInstance();
+	private static void getTweets(String searchQuery,ConfigurationBuilder builder) throws TwitterException, IOException, JSONException{
+		Twitter twitter= new TwitterFactory(builder.build()).getInstance();
 		Query query = new Query(searchQuery);
 		query.setResultType(ResultType.popular);
 		QueryResult result;
@@ -124,8 +139,6 @@ public class TwitterDataJSON {
 				}
 			}
 		}
-
-
 	}
 
 	private static String removeStopWords(String tweetRegex) throws IOException{
@@ -159,14 +172,9 @@ public class TwitterDataJSON {
 		MaxentTagger tagger= new MaxentTagger("/Users/varungupta/Downloads/stanford-postagger-2015-04-20/models/english-left3words-distsim.tagger");
 		String taggedText=tagger.tagString(textToBeTagged);
 		return taggedText;
-
 	}
-	public static void main(String args[]) throws TwitterException, IOException, JSONException, ClassNotFoundException, SQLException
-	{
-		TwitterDataJSON tweet= new TwitterDataJSON();
-		String searchQuery= new String("Bajirao Mastani");
-		tweet.getTweets(searchQuery);
-		DrillJDBCCon con = new DrillJDBCCon();
+
+	public  void tweetProcessing(DrillJDBCCon con,String searchQuery) throws ClassNotFoundException, SQLException, IOException{
 		ResultSet rs=con.executeQuery("Select id,text FROM dfs.`/Users/varungupta/git/OriginNew/Tweets/"+searchQuery+"/`");
 		while(rs.next()){
 			System.out.println(rs.getLong("id"));
@@ -177,6 +185,16 @@ public class TwitterDataJSON {
 			String refinedTweetFileName = "Tweets/" + searchQuery+"/"+Id+"Refined.txt";
 			storeRefinedTweet(taggedText,refinedTweetFileName);
 		}
-
+	}
+	public static void main(String args[]) throws TwitterException, IOException, JSONException, ClassNotFoundException, SQLException, ParseException
+	{
+		int threadNumber=new TwitterCredentialsRunnable().returnJsonSize();
+		Thread [] threads= new Thread[threadNumber];
+		for(int i=0; i<threads.length; i++)
+		{	
+			threads[i]=new Thread(new TwitterDataJSON());
+			threads[i].setName(""+i);
+			threads[i].start();
+		}
 	}
 }
