@@ -31,9 +31,7 @@ public class TwitterDataJSON implements Runnable {
 		TwitterCredentialsRunnable credentialsRunnable= new TwitterCredentialsRunnable();
 		try {
 			ConfigurationBuilder builder=credentialsRunnable.readJson(Integer.parseInt(Thread.currentThread().getName()));
-			String value=builder.toString();
-			System.out.println(value);
-			String searchQuery= new String("INDvsAUS");
+			String searchQuery= new String("Varun");
 			getTweets(searchQuery, builder);
 			DrillJDBCCon con = new DrillJDBCCon();
 			tweet.tweetProcessing(con, searchQuery);
@@ -60,23 +58,25 @@ public class TwitterDataJSON implements Runnable {
 
 	private static void getTweets(String searchQuery,ConfigurationBuilder builder) throws TwitterException, IOException, JSONException{
 		Twitter twitter= new TwitterFactory(builder.build()).getInstance();
+		
 		Query query = new Query(searchQuery);
 		query.setResultType(ResultType.popular);
 		QueryResult result;
 		new File("Tweets").mkdir();
 		do {
+			//System.out.println(Thread.currentThread().getName());
 			result = twitter.search(query);
 			List<Status> tweets=result.getTweets();
 			for (Status tweet :tweets) {
 				String json= TwitterObjectFactory.getRawJSON(tweet);
 				new File("Tweets/"+query.getQuery()).mkdir();
 				String fileName = "Tweets/" + query.getQuery()+"/"+tweet.getId()+ ".json";
-				storeJSON(json, fileName);
+				writeData(json, fileName);
 			}	
 		} while ((query = result.nextQuery()) != null);
 	}
 
-	private static void storeJSON(String json,String fileName) throws IOException{
+	private static void writeData(String json,String fileName) throws IOException{
 		FileOutputStream fos = null;
 		OutputStreamWriter osw = null;
 		BufferedWriter bw = null;
@@ -109,41 +109,9 @@ public class TwitterDataJSON implements Runnable {
 
 	}
 
-	private static void storeRefinedTweet(String refinedTweets,String refinedTweetFileName) throws IOException{
-		FileOutputStream fos = null;
-		OutputStreamWriter osw = null;
-		BufferedWriter bw = null;
-		try {
-			fos = new FileOutputStream(refinedTweetFileName);
-			osw = new OutputStreamWriter(fos, "UTF-8");
-			bw = new BufferedWriter(osw);
-			bw.write(refinedTweets);
-			bw.flush();
-		} finally {
-			if (bw != null) {
-				try {
-					bw.close();
-				} catch (IOException ignore) {
-				}
-			}
-			if (osw != null) {
-				try {
-					osw.close();
-				} catch (IOException ignore) {
-				}
-			}
-			if (fos != null) {
-				try {
-					fos.close();
-				} catch (IOException ignore) {
-				}
-			}
-		}
-	}
-
-	private static String removeStopWords(String tweetRegex) throws IOException{
+		private static String removeStopWords(String tweetRegex) throws IOException{
 		String [] words= tweetRegex.split(" ");
-		BufferedReader br= new BufferedReader(new FileReader("stopwords.txt"));
+		BufferedReader br= new BufferedReader(new FileReader("stopwords"));
 		List<String> stopWordList= new ArrayList<String>();
 		List<String> tweetList= new ArrayList<String>();
 		String str=null;
@@ -151,7 +119,6 @@ public class TwitterDataJSON implements Runnable {
 		while((str=br.readLine())!=null)
 		{	
 			stopWordList.add(str);
-
 		}
 		for(String word:words){
 			if(!stopWordList.contains(word))
@@ -165,7 +132,6 @@ public class TwitterDataJSON implements Runnable {
 		}
 		br.close();
 		return stopWordsRemoved;
-
 	}
 
 	public static String posTagger(String textToBeTagged) throws IOException{
@@ -175,15 +141,18 @@ public class TwitterDataJSON implements Runnable {
 	}
 
 	public  void tweetProcessing(DrillJDBCCon con,String searchQuery) throws ClassNotFoundException, SQLException, IOException{
-		ResultSet rs=con.executeQuery("Select id,text FROM dfs.`/Users/varungupta/git/OriginNew/Tweets/"+searchQuery+"/`");
+		ResultSet rs=con.executeQuery("Select id,text FROM dfs.`/Users/varungupta/git/Origin/Tweets/"+searchQuery+"/`");
+		new File("TweetsData").mkdir();
+		new File("TweetsData/"+searchQuery).mkdir();
 		while(rs.next()){
-			System.out.println(rs.getLong("id"));
+			//System.out.println(rs.getLong("id")+" "+Thread.currentThread());
 			Long Id=rs.getLong("id");
 			String tweetRegex=rs.getString("text").replaceAll("@[a-zA-Z1-9]+|#[a-zA-Z1-9]+|(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]+|(\n)", "");
 			String stopWordsRemoved=removeStopWords(tweetRegex);
 			String taggedText=posTagger(stopWordsRemoved);
-			String refinedTweetFileName = "Tweets/" + searchQuery+"/"+Id+"Refined.txt";
-			storeRefinedTweet(taggedText,refinedTweetFileName);
+			//new File("TweetsData/"+searchQuery+"/Data").mkdir();
+			String refinedTweetFileName = "TweetsData/"+searchQuery+"/"+Id+"Refined.txt";
+			writeData(taggedText, refinedTweetFileName);
 		}
 	}
 	public static void main(String args[]) throws TwitterException, IOException, JSONException, ClassNotFoundException, SQLException, ParseException
